@@ -34,3 +34,32 @@
 - [x] Pass a stable client-generated idempotency key through the student submit flow and deduplicate identical snapshots server-side
 - [x] Add deterministic aggregation contract test and stronger append-only submission assertions (persistence-level validation remains an acceptance task)
 - [x] Document authenticated teacher/student workflow verification limitation
+
+- [x] Add teacher notification read/unread query and mark-read procedure
+- [x] Add assignment due-date editing and validation in teacher workflow
+- [x] Add UI controls for unread notification state and due-date management
+- [x] Add tests and browser verification for notification and due-date flows
+- [x] Save and deliver the next-phase checkpoint
+
+- [x] Add backend coverage for assignment due-date create/update behavior
+- [x] Run browser verification after notification and due-date UI changes
+- [x] Save and deliver a checkpoint for the notification and due-date phase
+
+- [x] Confirm Supabase project URL and publishable/anon key
+- [x] Add Supabase browser and server authentication configuration
+- [x] Replace Manus OAuth UI login with Supabase email/password session handling
+- [x] Bridge Supabase users to the existing users table and classroom roles
+- [x] Preserve teacher/student authorization boundaries under Supabase sessions
+- [x] Add Supabase auth tests and update migration documentation
+- [x] Validate sign-in, sign-out, and protected classroom API access
+- [x] Save and deliver the Supabase authentication migration checkpoint
+
+- [x] Add Supabase token-to-local-user mapping tests and role enforcement coverage
+- [x] Remove remaining Manus-specific authentication dependency from runtime paths
+- [x] Document that live Supabase sign-in verification requires a configured test account and browser session
+
+- [x] Remove legacy Manus storage keys from the Supabase auth hook
+- [x] Add explicit Supabase-backed role-enforcement coverage
+- [x] Document the interactive browser-session limitation for live Supabase sign-in verification
+
+- [x] Test createContext with a mocked Supabase getUser response and local role lookup, then enforce the resolved role through a protected procedure

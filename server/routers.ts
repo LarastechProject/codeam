@@ -2,15 +2,13 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { notifyOwner } from "./_core/notification";
-import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import {
   addMembership, createAssignment, createClassroom, createProject, createSubmission,
   createTeacherNotification, getAssignmentById, getAssignmentProgress, getClassroomById, getClassroomByJoinCode,
-  getClassroomMemberships, getLatestSubmissionForProject, getMembership, getProjectById, getStudentMemberships, getSubmissionByIdempotencyKey, getTeacherNotifications,
-  getStudentProjects, getTeacherAssignments, getTeacherClassrooms, updateClassroom,
+  getClassroomMemberships, getLatestSubmissionForProject, getMembership, getProjectById, getStudentMemberships, getSubmissionByIdempotencyKey, getTeacherNotifications, markTeacherNotificationRead,
+  getStudentProjects, getTeacherAssignments, getTeacherClassrooms, updateAssignment, updateClassroom,
   updateProject,
 } from "./db";
 
@@ -47,11 +45,7 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return { success: true } as const;
-    }),
+    logout: publicProcedure.mutation(() => ({ success: true } as const)),
   }),
 
   classroom: router({
@@ -92,13 +86,7 @@ export const appRouter = router({
       if (!assignment) throw new TRPCError({ code: "NOT_FOUND", message: "Assignment not found" });
       await ownedClassroom(assignment.classroomId, ctx.user.id);
       const { id, ...values } = input;
-      const db = await import("./db");
-      const connection = await db.getDb();
-      if (!connection) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
-      const { assignments } = await import("../drizzle/schema");
-      const { and, eq } = await import("drizzle-orm");
-      await connection.update(assignments).set(values).where(and(eq(assignments.id, id), eq(assignments.teacherId, ctx.user.id)));
-      return getAssignmentById(id);
+      return updateAssignment(id, ctx.user.id, values);
     }),
   }),
 
@@ -145,6 +133,7 @@ export const appRouter = router({
 
   notification: router({
     mine: teacherProcedure.query(({ ctx }) => getTeacherNotifications(ctx.user.id)),
+    markRead: teacherProcedure.input(z.object({ id: idSchema })).mutation(({ ctx, input }) => markTeacherNotificationRead(input.id, ctx.user.id)),
   }),
 
   progress: router({

@@ -15,6 +15,8 @@ const dbMocks = vi.hoisted(() => ({
   createTeacherNotification: vi.fn(),
   createProject: vi.fn(),
   getAssignmentProgress: vi.fn(),
+  markTeacherNotificationRead: vi.fn(),
+  updateAssignment: vi.fn(),
 }));
 vi.mock("./db", async () => {
   const actual = await vi.importActual<typeof import("./db")>("./db");
@@ -101,6 +103,25 @@ describe("CodeSprout classroom backend", () => {
     expect(result.duplicate).toBe(true);
     expect(result.submission).toEqual(existing);
     expect(dbMocks.createSubmission).not.toHaveBeenCalled();
+  });
+
+  it("persists an assignment due date only through the owning teacher update path", async () => {
+    const dueAt = new Date("2026-09-15T12:00:00.000Z");
+    dbMocks.getAssignmentById.mockResolvedValue({ id: 11, classroomId: 9, teacherId: 1, title: "Page", instructions: "Build a page", dueAt: null });
+    dbMocks.getClassroomById.mockResolvedValue({ id: 9, teacherId: 1, name: "Web Foundations", joinCode: "ABC234", level: "primary-5-6" });
+    dbMocks.updateAssignment.mockResolvedValue({ id: 11, classroomId: 9, teacherId: 1, title: "Page", instructions: "Build a page", dueAt });
+    await expect(appRouter.createCaller(context("teacher", 2)).assignment.update({ id: 11, dueAt })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    const result = await appRouter.createCaller(context("teacher", 1)).assignment.update({ id: 11, dueAt });
+    expect(result?.dueAt).toEqual(dueAt);
+    expect(dbMocks.updateAssignment).toHaveBeenCalledWith(11, 1, { dueAt });
+  });
+
+  it("restricts notification read state to teachers and scopes the mutation", async () => {
+    await expect(appRouter.createCaller(context("student", 2)).notification.markRead({ id: 4 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    dbMocks.markTeacherNotificationRead.mockResolvedValue({ id: 4, teacherId: 1, submissionId: 77, title: "New", content: "Submitted", createdAt: new Date(), readAt: new Date() });
+    const result = await appRouter.createCaller(context("teacher", 1)).notification.markRead({ id: 4 });
+    expect(result?.readAt).toBeInstanceOf(Date);
+    expect(dbMocks.markTeacherNotificationRead).toHaveBeenCalledWith(4, 1);
   });
 
   it("aggregates teacher progress into submitted, draft-active, and not-started states", () => {

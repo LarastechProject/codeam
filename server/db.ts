@@ -96,6 +96,12 @@ export async function createAssignment(input: typeof assignments.$inferInsert) {
   await db.insert(assignments).values(input);
   return db.select().from(assignments).where(and(eq(assignments.classroomId, input.classroomId), eq(assignments.title, input.title))).orderBy(desc(assignments.id)).limit(1).then((r) => r[0]);
 }
+export async function updateAssignment(id: number, teacherId: number, values: Partial<typeof assignments.$inferInsert>) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.update(assignments).set(values).where(and(eq(assignments.id, id), eq(assignments.teacherId, teacherId)));
+  return getAssignmentById(id);
+}
+
 export async function getTeacherAssignments(teacherId: number, classroomId?: number) {
   const db = await getDb(); if (!db) return [];
   const condition = classroomId ? and(eq(assignments.teacherId, teacherId), eq(assignments.classroomId, classroomId)) : eq(assignments.teacherId, teacherId);
@@ -143,6 +149,11 @@ export async function createTeacherNotification(input: typeof notifications.$inf
 export async function getTeacherNotifications(teacherId: number) {
   const db = await getDb(); if (!db) return [];
   return db.select().from(notifications).where(eq(notifications.teacherId, teacherId)).orderBy(desc(notifications.createdAt));
+}
+export async function markTeacherNotificationRead(notificationId: number, teacherId: number) {
+  const db = await getDb(); if (!db) return undefined;
+  await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, notificationId), eq(notifications.teacherId, teacherId)));
+  return db.select().from(notifications).where(and(eq(notifications.id, notificationId), eq(notifications.teacherId, teacherId))).limit(1).then((r) => r[0]);
 }
 export async function getLatestSubmissionForProject(projectId: number, studentId: number, assignmentId: number) {
   const db = await getDb(); if (!db) return undefined;
