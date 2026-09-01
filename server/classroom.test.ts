@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
+import { aggregateProgressRows } from "./db";
 
 const dbMocks = vi.hoisted(() => ({
   getClassroomByJoinCode: vi.fn(),
@@ -100,6 +101,17 @@ describe("CodeSprout classroom backend", () => {
     expect(result.duplicate).toBe(true);
     expect(result.submission).toEqual(existing);
     expect(dbMocks.createSubmission).not.toHaveBeenCalled();
+  });
+
+  it("aggregates teacher progress into submitted, draft-active, and not-started states", () => {
+    const now = new Date();
+    const result = aggregateProgressRows([
+      { studentId: 1, studentName: "Submitted", joinedAt: now, projectId: 1, projectName: "A", projectUpdatedAt: now, lastRunStatus: "success", lastRunErrorCount: 0, submissionId: 5, submittedAt: now },
+      { studentId: 2, studentName: "Draft", joinedAt: now, projectId: 2, projectName: "B", projectUpdatedAt: now, lastRunStatus: "error", lastRunErrorCount: 1, submissionId: null, submittedAt: null },
+      { studentId: 3, studentName: "Not started", joinedAt: now, projectId: null, projectName: null, projectUpdatedAt: null, lastRunStatus: null, lastRunErrorCount: null, submissionId: null, submittedAt: null },
+    ]);
+    expect(result.map((row) => row.state)).toEqual(["submitted", "draft-active", "not-started"]);
+    expect(result[1]?.lastRunErrorCount).toBe(1);
   });
 
   it("allows only the owning teacher to read assignment progress", async () => {

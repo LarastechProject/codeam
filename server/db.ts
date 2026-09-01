@@ -152,6 +152,22 @@ export async function getLatestSubmissionsForAssignment(assignmentId: number) {
   const db = await getDb(); if (!db) return [];
   return db.select().from(submissions).where(eq(submissions.assignmentId, assignmentId)).orderBy(desc(submissions.submittedAt));
 }
+export type AssignmentProgressRow = {
+  studentId: number;
+  studentName: string | null;
+  joinedAt: Date;
+  projectId: number | null;
+  projectName: string | null;
+  projectUpdatedAt: Date | null;
+  lastRunStatus: "not-run" | "success" | "error" | null;
+  lastRunErrorCount: number | null;
+  submissionId: number | null;
+  submittedAt: Date | null;
+};
+export function aggregateProgressRows(rows: AssignmentProgressRow[]) {
+  return rows.map((row) => ({ ...row, state: row.submittedAt ? "submitted" : row.projectUpdatedAt ? "draft-active" : "not-started" as const }));
+}
+
 export async function getAssignmentProgress(assignmentId: number, classroomId: number) {
   const db = await getDb(); if (!db) return [];
   return db.select({
@@ -171,5 +187,5 @@ export async function getAssignmentProgress(assignmentId: number, classroomId: n
     .leftJoin(submissions, and(eq(submissions.studentId, users.id), eq(submissions.assignmentId, assignmentId)))
     .where(eq(classMemberships.classroomId, classroomId))
     .groupBy(users.id, users.name, classMemberships.joinedAt, projects.id, projects.name, projects.updatedAt, projects.lastRunStatus, projects.lastRunErrorCount)
-    .orderBy(users.name);
+    .orderBy(users.name).then(aggregateProgressRows);
 }

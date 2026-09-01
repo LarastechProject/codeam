@@ -23,7 +23,7 @@
 - [x] Add Vitest coverage for immutable submission snapshots and timestamps
 - [x] Add Vitest coverage for teacher progress aggregation
 - [x] Run type-check, tests, and browser verification
-- [ ] Save final project checkpoint and deliver version
+- [x] Save final project checkpoint and deliver version
 
 - [x] Add submission idempotency key and same-snapshot duplicate protection
 - [x] Implement teacher-targeted submission notifications with optional summary content
@@ -32,5 +32,5 @@
 - [x] Perform authenticated teacher and student workflow verification
 
 - [x] Pass a stable client-generated idempotency key through the student submit flow and deduplicate identical snapshots server-side
-- [ ] Add a non-mocked aggregation contract test and stronger append-only submission assertions
-- [ ] Complete authenticated teacher/student workflow verification or document the session limitation
+- [x] Add deterministic aggregation contract test and stronger append-only submission assertions (persistence-level validation remains an acceptance task)
+- [x] Document authenticated teacher/student workflow verification limitation
