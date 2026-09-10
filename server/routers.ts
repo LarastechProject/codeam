@@ -9,7 +9,7 @@ import {
   createTeacherNotification, getAssignmentById, getAssignmentProgress, getClassroomById, getClassroomByJoinCode,
   getClassroomMemberships, getLatestSubmissionForProject, getMembership, getProjectById, getStudentMemberships, getSubmissionByIdempotencyKey, getTeacherNotifications, markTeacherNotificationRead,
   getStudentProjects, getTeacherAssignments, getTeacherClassrooms, updateAssignment, updateClassroom,
-  updateProject,
+  updateProject, updateUserProfile,
 } from "./db";
 
 const levelSchema = z.enum(["primary-1-2", "primary-3-4", "primary-5-6", "jss1-plus"]);
@@ -46,6 +46,8 @@ export const appRouter = router({
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(() => ({ success: true } as const)),
+    profile: protectedProcedure.query(({ ctx }) => ctx.user),
+    updateProfile: protectedProcedure.input(z.object({ name: z.string().trim().min(1).max(160), email: z.string().trim().email().max(320) })).mutation(({ ctx, input }) => updateUserProfile(ctx.user.id, input)),
   }),
 
   classroom: router({

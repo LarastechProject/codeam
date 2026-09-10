@@ -46,6 +46,12 @@ export async function getUserByOpenId(openId: string) {
   return result[0];
 }
 
+export async function updateUserProfile(id: number, values: Pick<InsertUser, "name" | "email">) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.update(users).set({ name: values.name, email: values.email }).where(eq(users.id, id));
+  return db.select().from(users).where(eq(users.id, id)).limit(1).then((r) => r[0]);
+}
+
 export async function createClassroom(input: typeof classrooms.$inferInsert) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   await db.insert(classrooms).values(input);

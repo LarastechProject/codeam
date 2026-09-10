@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -24,6 +24,14 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
+  const [authMode, setAuthMode] = useState<"signin" | "reset">("signin");
+  const [resetEmail, setResetEmail] = useState("");
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [profileName, setProfileName] = useState(user?.name ?? "");
+  const [profileEmail, setProfileEmail] = useState(user?.email ?? "");
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
   const [joinCode, setJoinCode] = useState("");
   const [className, setClassName] = useState("");
   const [classLevel, setClassLevel] = useState("primary-5-6");
@@ -52,6 +60,8 @@ export default function Home() {
     { classroomId: selectedClassroom ?? undefined },
     { enabled: Boolean(user) && !isTeacher && Boolean(selectedClassroom) }
   );
+  const profile = trpc.auth.profile.useQuery(undefined, { enabled: Boolean(user) });
+  const updateProfile = trpc.auth.updateProfile.useMutation({ onSuccess: (updated) => { toast.success("Profile updated"); setProfileName(updated?.name ?? ""); setProfileEmail(updated?.email ?? ""); void utils.auth.me.invalidate(); }, onError: (e) => toast.error(e.message) });
   const studentAssignments = trpc.assignment.forStudent.useQuery(
     { classroomId: selectedClassroom ?? 0 },
     { enabled: Boolean(user) && !isTeacher && Boolean(selectedClassroom) }
@@ -82,6 +92,13 @@ export default function Home() {
 
   const selectedAssignmentRecord = useMemo(() => assignmentList.data?.find((a) => a.id === selectedAssignment), [assignmentList.data, selectedAssignment]);
 
+  useEffect(() => {
+    if (user) { setProfileName(user.name ?? ""); setProfileEmail(user.email ?? ""); }
+    void supabase.auth.getUser().then(({ data }) => setEmailVerified(data.user?.email_confirmed_at != null));
+    const { data } = supabase.auth.onAuthStateChange((event) => { if (event === "PASSWORD_RECOVERY") setRecoveryMode(true); });
+    return () => data.subscription.unsubscribe();
+  }, [user]);
+
   if (loading) return <div className="min-h-screen bg-[#071A52] p-10 text-white">Loading classroom workspace…</div>;
   if (!isAuthenticated) return (
     <div className="min-h-screen bg-[#071A52] text-white grid place-items-center p-6">
@@ -89,11 +106,7 @@ export default function Home() {
         <p className="font-mono text-cyan-200 text-sm tracking-[0.25em]">CODESPROUT / CLASSROOM OS</p>
         <h1 className="mt-5 text-5xl font-bold tracking-tight">Build. Run. Learn.</h1>
         <p className="mt-5 max-w-xl text-blue-100 leading-7">A secure workspace where teachers manage assignments and students create, save, and submit HTML, CSS, and JavaScript projects.</p>
-        <form className="mt-8 grid gap-3 max-w-md" onSubmit={async (event) => { event.preventDefault(); setAuthBusy(true); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) toast.error(error.message); setAuthBusy(false); }}>
-          <Label className="text-blue-100">Email</Label><Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="border-cyan-200/30 bg-[#071A52] text-white" placeholder="you@example.com" />
-          <Label className="text-blue-100">Password</Label><Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="border-cyan-200/30 bg-[#071A52] text-white" placeholder="Your password" />
-          <Button type="submit" disabled={authBusy} className="mt-2 bg-cyan-300 text-[#071A52] hover:bg-cyan-200">{authBusy ? "Signing in…" : "Sign in to continue"}</Button>
-        </form>
+        {recoveryMode ? <form className="mt-8 grid gap-3 max-w-md" onSubmit={async (event) => { event.preventDefault(); const { error } = await supabase.auth.updateUser({ password: newPassword }); if (error) toast.error(error.message); else { toast.success("Password updated"); setRecoveryMode(false); } }}><Label className="text-blue-100">New password</Label><Input type="password" minLength={8} required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="border-cyan-200/30 bg-[#071A52] text-white" /><Button type="submit" className="bg-cyan-300 text-[#071A52] hover:bg-cyan-200">Set new password</Button></form> : authMode === "reset" ? <form className="mt-8 grid gap-3 max-w-md" onSubmit={async (event) => { event.preventDefault(); setAuthBusy(true); const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, { redirectTo: window.location.origin }); if (error) toast.error(error.message); else toast.success("Password reset email sent"); setAuthBusy(false); }}><Label className="text-blue-100">Account email</Label><Input type="email" required value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} className="border-cyan-200/30 bg-[#071A52] text-white" placeholder="you@example.com" /><Button type="submit" disabled={authBusy} className="bg-cyan-300 text-[#071A52] hover:bg-cyan-200">{authBusy ? "Sending…" : "Send reset email"}</Button><Button type="button" variant="outline" onClick={() => setAuthMode("signin")} className="border-cyan-200/40 bg-transparent text-white">Back to sign in</Button></form> : <form className="mt-8 grid gap-3 max-w-md" onSubmit={async (event) => { event.preventDefault(); setAuthBusy(true); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) toast.error(error.message); setAuthBusy(false); }}><Label className="text-blue-100">Email</Label><Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="border-cyan-200/30 bg-[#071A52] text-white" placeholder="you@example.com" /><Label className="text-blue-100">Password</Label><Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="border-cyan-200/30 bg-[#071A52] text-white" /><Button type="submit" disabled={authBusy} className="mt-2 bg-cyan-300 text-[#071A52] hover:bg-cyan-200">{authBusy ? "Signing in…" : "Sign in to continue"}</Button><Button type="button" variant="outline" onClick={() => { setResetEmail(email); setAuthMode("reset"); }} className="border-cyan-200/40 bg-transparent text-white">Forgot password?</Button></form>}
         <p className="mt-4 text-xs text-blue-200">Teacher and student roles are assigned in the classroom database after Supabase identity sync.</p>
       </div>
     </div>
@@ -104,11 +117,12 @@ export default function Home() {
       <header className="border-b border-cyan-200/20 bg-[#081E5D] px-6 py-5 md:px-10">
         <div className="mx-auto flex max-w-7xl items-start justify-between gap-6">
           <div><p className="font-mono text-xs tracking-[0.25em] text-cyan-200">CODESPROUT / SECURE CLASSROOM WORKSPACE</p><h1 className="mt-2 text-3xl font-bold">{isTeacher ? "Teacher control room" : "Student learning bay"}</h1><p className="mt-1 text-sm text-blue-200">Signed in as {user?.name || user?.email || "CodeSprout user"}</p></div>
-          <Button variant="outline" className="border-cyan-200/40 bg-transparent text-white hover:bg-cyan-200/10" onClick={() => logout()}>Sign out</Button>
+          <div className="flex flex-wrap justify-end gap-2"><Button variant="outline" className="border-cyan-200/40 bg-transparent text-white hover:bg-cyan-200/10" onClick={() => setProfileOpen((open) => !open)}>{profileOpen ? "Close profile" : "Profile"}</Button><Button variant="outline" className="border-cyan-200/40 bg-transparent text-white hover:bg-cyan-200/10" onClick={() => logout()}>Sign out</Button></div>
         </div>
       </header>
       <main className="mx-auto max-w-7xl p-6 md:p-10">
         <div className="pointer-events-none fixed inset-0 opacity-[0.05]" style={{ backgroundImage: "linear-gradient(#9BE7FF 1px, transparent 1px), linear-gradient(90deg, #9BE7FF 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
+        {profileOpen && <section className="relative mb-6 border border-cyan-200/30 bg-[#0B2770]/90 p-6"><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="font-mono text-xs tracking-widest text-cyan-200">ACCOUNT / PROFILE</p><h2 className="mt-2 text-2xl font-semibold">{isTeacher ? "Teacher profile" : "Student profile"}</h2><p className="mt-1 text-sm text-blue-200">Role: {profile.data?.role ?? user?.role}</p></div><div className="text-right text-sm">{emailVerified ? <span className="text-cyan-200">Email verified</span> : <span className="text-amber-200">Email not verified</span>}{!emailVerified && <Button size="sm" variant="outline" className="ml-3 border-cyan-200/40 bg-transparent text-white" onClick={async () => { if (!profileEmail) return; const { error } = await supabase.auth.resend({ type: "signup", email: profileEmail }); if (error) toast.error(error.message); else toast.success("Verification email sent"); }}>Resend verification</Button>}</div></div><div className="mt-5 grid gap-4 md:grid-cols-2"><div><Label className="text-blue-100">Display name</Label><Input value={profileName} onChange={(e) => setProfileName(e.target.value)} className="mt-1 border-cyan-200/30 bg-[#071A52] text-white" /></div><div><Label className="text-blue-100">Email address</Label><Input type="email" value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} className="mt-1 border-cyan-200/30 bg-[#071A52] text-white" /></div></div><div className="mt-5 flex flex-wrap gap-2"><Button className="bg-cyan-300 text-[#071A52] hover:bg-cyan-200" disabled={updateProfile.isPending} onClick={async () => { const { error } = await supabase.auth.updateUser({ email: profileEmail, data: { full_name: profileName } }); if (error) { toast.error(error.message); return; } updateProfile.mutate({ name: profileName, email: profileEmail }); }}>Save profile</Button><Button variant="outline" className="border-cyan-200/40 bg-transparent text-white" onClick={async () => { const { error } = await supabase.auth.resetPasswordForEmail(profileEmail, { redirectTo: window.location.origin }); if (error) toast.error(error.message); else toast.success("Password reset email sent"); }}>Password reset</Button></div></section>}
         {isTeacher ? (
           <div className="relative grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
             <section className="border border-cyan-200/30 bg-[#0B2770]/90 p-6">

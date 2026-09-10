@@ -63,3 +63,10 @@
 - [x] Document the interactive browser-session limitation for live Supabase sign-in verification
 
 - [x] Test createContext with a mocked Supabase getUser response and local role lookup, then enforce the resolved role through a protected procedure
+
+- [x] Add protected profile read/update procedure for students and teachers
+- [x] Add profile page with role-aware account details and editable fields
+- [x] Add Supabase password-reset request and update-password screens
+- [x] Add Supabase email-verification status and resend flow
+- [x] Add profile and auth-flow tests
+- [x] Verify the account-management UI and save a checkpoint
