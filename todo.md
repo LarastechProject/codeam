@@ -77,9 +77,12 @@
 - [x] Add a safe teacher/admin role promotion path for the requested account
 - [x] Add tests for signup validation and default student role assignment
 - [x] Verify the signup and role flows without exposing credentials
-- [ ] Connect the local project to the target GitHub repository
-- [ ] Push the validated project code to the target repository
+- [x] Connect the local project to the target GitHub repository
+- [x] Push the validated project code to the target repository
 
-- [ ] Clarify the requested allowlist requirement as teacher-only unless an admin promotion path is explicitly required
-- [ ] Add automated signup validation coverage for required fields and password length
-- [ ] Document that live signup and role verification require an interactive Supabase browser session
+- [x] Clarify the requested allowlist requirement: the configured account receives admin access, while all other signups remain students
+- [x] Add automated signup validation coverage for required fields and password length
+- [x] Document that live signup and role verification require an interactive Supabase browser session
+
+- [x] Include client signup validation tests in the active Vitest suite and rerun them
+- [x] Document live student signup and teacher/admin role verification in README.md
