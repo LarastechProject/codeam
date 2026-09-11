@@ -7,8 +7,14 @@ export function extractBearerToken(req: CreateExpressContextOptions["req"]) {
   const header = req.headers.authorization;
   return header?.startsWith("Bearer ") ? header.slice(7) : undefined;
 }
+export function isTeacherEmail(email?: string | null) {
+  if (!email) return false;
+  const allowlist = (process.env.CODESPROUT_TEACHER_EMAILS ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
+  return allowlist.includes(email.trim().toLowerCase());
+}
+
 export function supabaseIdentityToInsert(identity: { id: string; email?: string; user_metadata?: Record<string, unknown> }) {
-  return { openId: identity.id, email: identity.email ?? null, name: (identity.user_metadata?.full_name as string | undefined) ?? identity.email ?? null, loginMethod: "supabase" } as const;
+  return { openId: identity.id, email: identity.email ?? null, name: (identity.user_metadata?.full_name as string | undefined) ?? identity.email ?? null, loginMethod: "supabase", ...(isTeacherEmail(identity.email) ? { role: "admin" as const } : {}) } as const;
 }
 
 export type TrpcContext = {
